@@ -28,10 +28,10 @@ const web = new WebClient(slackToken);
 app.use(cors());
 
 // Increase payload size limit to 10MB for JSON data
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "20mb" }));
 
 // Increase payload size limit to 10MB for URL-encoded data
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
 app.post(
   "/postToSlack",
